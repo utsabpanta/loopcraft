@@ -33,6 +33,9 @@ export function ToolsLevel({ onGrade }: LevelProps) {
       </div>
       <div className="split">
         <Panel title="1 · Pack the toolbox">
+          <p className="muted small">
+            Pick <strong>every</strong> tool the agent will need to finish the mission. You can select several. The agent can only do what its tools allow, and it may use anything you hand it.
+          </p>
           <div className="tool-grid">
             {TOOLBOX.map((t) => (
               <button

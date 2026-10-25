@@ -42,6 +42,14 @@ describe('tools', () => {
     expect(run.grade.passed).toBe(false)
   })
 
+  it('a lone irrelevant tool names every missing capability and never claims a diagnosis', () => {
+    const run = runToolMission(new Set(['web_search']), null)
+    expect(run.grade.passed).toBe(false)
+    const missing = run.grade.notes.filter((n) => n.text.startsWith('Missing:'))
+    expect(missing).toHaveLength(5)
+    expect(run.steps.map((s) => s.text).join(' ')).not.toMatch(/Found the bug|Diagnosed/)
+  })
+
   it('gets stuck without observability', () => {
     const run = runToolMission(new Set(['read_file', 'edit_file', 'run_tests', 'deploy_staging']), 1)
     expect(run.completed).toBe(false)

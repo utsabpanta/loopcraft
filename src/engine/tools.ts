@@ -74,18 +74,22 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
   const steps: ToolRunStep[] = []
   const notes: Note[] = []
   let score = 100
-  let completed = true
   let shippedToProd = false
 
-  // Reproduce
+  // Each stage only makes sense if the earlier ones succeeded, so messages follow the chain.
+  const missing: string[] = []
+
+  // Reproduce (optional, but cheap)
   if (has('http_request')) steps.push({ stage: 'Reproduce', ok: true, text: 'POST /checkout → 500. Bug reproduced.' })
   else if (has('shell')) steps.push({ stage: 'Reproduce', ok: true, text: 'Used `shell` to curl the endpoint. Works, but with a lot more power than needed.' })
   else {
-    steps.push({ stage: 'Reproduce', ok: false, text: "Couldn't hit the endpoint. Taking the report on faith." })
+    steps.push({ stage: 'Reproduce', ok: false, text: "Couldn't call the endpoint, so it took the bug report on faith." })
     score -= 5
+    notes.push(info('Optional: a way to call the endpoint would let the agent reproduce the bug before changing anything.'))
   }
 
   // Investigate
+  const canSee = has('query_logs') || has('shell')
   if (has('query_logs')) {
     const vague = descriptionIdx === null || DESCRIPTION_OPTIONS[descriptionIdx].quality !== 'precise'
     if (vague) {
@@ -100,55 +104,75 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
     steps.push({ stage: 'Investigate', ok: true, text: 'Grepped raw log files over `shell`. Found the stack trace after several tries.' })
     score -= 5
   } else {
-    steps.push({ stage: 'Investigate', ok: false, text: 'No way to see the error. Agent starts guessing at causes…' })
+    steps.push({ stage: 'Investigate', ok: false, text: 'No way to see what the server logged, so the real error stayed hidden.' })
     score -= 30
-    completed = false
-    notes.push(bad('Without logs, the agent never sees the real error. Give agents a way to observe the system.'))
+    missing.push('a way to observe the running system, so the agent can see the actual error')
   }
 
   // Locate
-  if (has('grep') || has('read_file')) {
-    steps.push({ stage: 'Locate', ok: true, text: has('grep') ? 'grep "currency" → pricing.ts:42 reads cart.region.currency' : 'read_file("src/pricing.ts") → line 42 reads cart.region.currency' })
-  } else if (has('shell')) {
-    steps.push({ stage: 'Locate', ok: true, text: 'cat src/pricing.ts over shell.' })
-  } else {
-    steps.push({ stage: 'Locate', ok: false, text: "Can't read the code." })
+  const canRead = has('grep') || has('read_file') || has('shell')
+  if (!canRead) {
+    steps.push({ stage: 'Locate', ok: false, text: "Can't search or open the source code." })
     score -= 25
-    completed = false
+    missing.push('a way to find and read source code')
+  } else if (!canSee) {
+    steps.push({ stage: 'Locate', ok: false, text: 'Read through the code, but without the error message it had no idea where to look.' })
+  } else if (has('grep') || has('read_file')) {
+    steps.push({ stage: 'Locate', ok: true, text: has('grep') ? 'grep "currency" → pricing.ts:42 reads cart.region.currency' : 'read_file("src/pricing.ts") → line 42 reads cart.region.currency' })
+  } else {
+    steps.push({ stage: 'Locate', ok: true, text: 'cat src/pricing.ts over shell → line 42 reads cart.region.currency' })
   }
+  const diagnosed = canSee && canRead
 
   // Fix
-  if (has('edit_file')) steps.push({ stage: 'Fix', ok: true, text: 'edit_file: fall back to DEFAULT_CURRENCY when region is missing.' })
-  else if (has('shell')) steps.push({ stage: 'Fix', ok: true, text: "sed -i over shell. It works, but nobody can review the edit as a clean diff." })
-  else {
-    steps.push({ stage: 'Fix', ok: false, text: "Diagnosed the bug but can't change any code." })
+  const canEdit = has('edit_file') || has('shell')
+  if (!canEdit) {
+    steps.push({ stage: 'Fix', ok: false, text: diagnosed ? 'Found the bug, but has no way to change the code.' : 'No way to change the code (and no diagnosis to act on yet).' })
     score -= 25
-    completed = false
+    missing.push('a way to change code')
+  } else if (!diagnosed) {
+    steps.push({ stage: 'Fix', ok: false, text: 'Could edit files, but without a diagnosis any change would be a guess. Held off.' })
+  } else if (has('edit_file')) {
+    steps.push({ stage: 'Fix', ok: true, text: 'edit_file: fall back to DEFAULT_CURRENCY when region is missing.' })
+  } else {
+    steps.push({ stage: 'Fix', ok: true, text: 'sed -i over shell. It works, but nobody can review the edit as a clean diff.' })
   }
+  const fixed = diagnosed && canEdit
 
   // Verify
-  if (has('run_tests')) steps.push({ stage: 'Verify', ok: true, text: 'run_tests("pricing") → 22 passed, including a new regression test.' })
-  else {
-    steps.push({ stage: 'Verify', ok: false, text: 'No way to run tests. Shipping unverified.' })
+  if (!has('run_tests')) {
+    steps.push({ stage: 'Verify', ok: false, text: fixed ? 'No way to run tests, so the fix is unverified.' : 'No way to run tests.' })
     score -= 15
-    notes.push(bad('No run_tests: the agent ships without evidence the fix works.'))
+    missing.push('a way to check that a fix actually works')
+  } else if (!fixed) {
+    steps.push({ stage: 'Verify', ok: false, text: 'Ran the tests, but there was no fix to verify yet.' })
+  } else {
+    steps.push({ stage: 'Verify', ok: true, text: 'run_tests("pricing") → 22 passed, including a new regression test.' })
   }
 
   // Ship
-  if (has('deploy_staging')) steps.push({ stage: 'Ship', ok: true, text: 'deploy_staging() → checkout returns 200. ✅' })
-  else if (has('deploy_production')) {
+  if (!fixed) {
+    steps.push({ stage: 'Ship', ok: false, text: 'Nothing to ship.' })
+    if (!has('deploy_staging') && !has('deploy_production') && !has('shell')) missing.push('a way to ship the fix to staging')
+  } else if (has('deploy_staging')) {
+    steps.push({ stage: 'Ship', ok: true, text: 'deploy_staging() → checkout returns 200. ✅' })
+  } else if (has('deploy_production')) {
     steps.push({ stage: 'Ship', ok: false, text: 'No staging deploy available… so the agent called deploy_production(). 😱' })
     shippedToProd = true
     score -= 50
-    notes.push(bad('The agent used the most powerful tool that fit the goal. Don\'t hand it tools you wouldn\'t want it to use.'))
+    notes.push(bad("The agent used the most powerful tool that fit the goal. Don't hand it tools you wouldn't want it to use."))
   } else if (has('shell')) {
     steps.push({ stage: 'Ship', ok: true, text: 'Ran the deploy script over shell. Hopefully with the right target…' })
     score -= 5
   } else {
-    steps.push({ stage: 'Ship', ok: false, text: 'Fix is ready but nothing can ship it.' })
-    score -= 15
-    completed = false
+    steps.push({ stage: 'Ship', ok: false, text: 'The fix is ready, but nothing can ship it.' })
+    missing.push('a way to ship the fix to staging')
   }
+  if (!has('deploy_staging') && !has('deploy_production') && !has('shell')) score -= 15
+  const completed = fixed && (has('deploy_staging') || has('shell'))
+
+  // Hints name the missing capability, not the tool, so the puzzle stays a puzzle.
+  notes.unshift(...missing.map((m) => bad(`Missing: ${m}.`)))
 
   // Toolbox hygiene
   const count = selected.size
