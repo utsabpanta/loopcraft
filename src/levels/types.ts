@@ -3,6 +3,8 @@ import type { Grade } from '../engine/common'
 
 export interface LevelProps {
   onGrade: (grade: Grade) => void
+  /** Call whenever the learner changes an input, so a stale result never sits next to new choices. */
+  onReset: () => void
 }
 
 export interface Level {

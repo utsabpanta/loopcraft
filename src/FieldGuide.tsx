@@ -3,7 +3,10 @@ const TERMS: { term: string; def: string }[] = [
   { term: 'Agent loop', def: 'Gather context → take action → verify → repeat. The core control flow of every agent.' },
   { term: 'Tool', def: 'A function the model can call, described by a name, a JSON schema and a description. The description is part of the prompt.' },
   { term: 'Context window', def: 'Everything the model can see on this turn. It is finite, and quality degrades as it fills with low-signal tokens.' },
-  { term: 'Context engineering', def: 'Curating the smallest set of high-signal tokens: what to load up front, what to fetch just-in-time, what to compact or drop.' },
+  {
+    term: 'Context engineering',
+    def: 'Curating the smallest set of high-signal tokens: what to load up front, what to fetch just-in-time, what to compact or drop.',
+  },
   { term: 'Just-in-time retrieval', def: 'Giving the agent search/read tools so it loads files when needed, instead of stuffing everything in up front.' },
   { term: 'Compaction', def: 'Summarizing long history into a short recap so a long-running agent keeps its window lean.' },
   { term: 'AGENTS.md / CLAUDE.md', def: 'A short notes file in the repo with conventions, commands and gotchas. It is loaded into every session.' },
@@ -31,7 +34,9 @@ export function FieldGuide() {
   return (
     <article className="level">
       <header className="level-head">
-        <span className="level-glyph" aria-hidden>?</span>
+        <span className="level-glyph" aria-hidden>
+          ?
+        </span>
         <div>
           <p className="eyebrow">Reference</p>
           <h1>Field Guide</h1>

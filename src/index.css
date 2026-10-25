@@ -8,6 +8,7 @@
   --muted: #9aa2b6;
   --accent: #ffb547;
   --accent-ink: #1a1206;
+  --accent-text: #ffb547;
   --teal: #5ee6c8;
   --good: #4ade80;
   --good-bg: rgba(74, 222, 128, 0.1);
@@ -34,19 +35,20 @@
     --line: #e2ddd1;
     --text: #1d1f26;
     --muted: #646b7c;
-    --accent: #d9821b;
-    --accent-ink: #ffffff;
-    --teal: #0f9d84;
+    --accent: #e8912a;
+    --accent-ink: #1a1206;
+    --accent-text: #9a5b0c;
+    --teal: #0b7a67;
     --good: #16a34a;
     --good-bg: rgba(22, 163, 74, 0.09);
     --bad: #dc2626;
     --bad-bg: rgba(220, 38, 38, 0.08);
     --info: #2563eb;
     --info-bg: rgba(37, 99, 235, 0.08);
-    --lane-main: #d9821b;
-    --lane-sub1: #0f9d84;
-    --lane-sub2: #7c4dff;
-    --lane-sub3: #2563eb;
+    --lane-main: #e8912a;
+    --lane-sub1: #2bb89c;
+    --lane-sub2: #a98bff;
+    --lane-sub3: #6fa3ff;
     color-scheme: light;
   }
 }
@@ -67,7 +69,8 @@ body {
 }
 
 body {
-  background-image: radial-gradient(1200px 600px at 100% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+  background-image:
+    radial-gradient(1200px 600px at 100% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, color-mix(in srgb, var(--teal) 8%, transparent), transparent 60%);
   background-attachment: fixed;
   min-height: 100vh;
@@ -111,7 +114,7 @@ button {
   color: var(--bad);
 }
 .accent {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ---------- Layout ---------- */
@@ -182,7 +185,9 @@ button {
   border-radius: 10px;
   text-decoration: none;
   color: var(--muted);
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .nav-item:hover {
@@ -213,8 +218,8 @@ button {
 }
 
 .nav-item.is-active .nav-glyph {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-text);
+  color: var(--accent-text);
 }
 
 .nav-text {
@@ -293,7 +298,10 @@ button {
   font-size: 0.95rem;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+  transition:
+    transform 0.1s,
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .btn:hover:not(:disabled) {
@@ -309,12 +317,12 @@ button {
 
 .btn.primary {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   color: var(--accent-ink);
 }
 .btn.primary:hover:not(:disabled) {
   filter: brightness(1.07);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 .btn.ghost {
@@ -386,13 +394,15 @@ button {
   background: var(--surface-2);
   cursor: pointer;
   font-size: 0.93rem;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .choice:hover:not(:disabled) {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 .choice.is-on {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
 }
 .choice:disabled {
@@ -618,11 +628,13 @@ button {
   border: 1px solid var(--line);
   background: var(--surface);
   text-decoration: none;
-  transition: transform 0.15s, border-color 0.15s;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
 }
 .level-card:hover {
   transform: translateY(-2px);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 .level-card.is-passed {
   border-color: color-mix(in srgb, var(--good) 50%, var(--line));
@@ -630,7 +642,7 @@ button {
 
 .level-card-glyph {
   font-size: 1.6rem;
-  color: var(--accent);
+  color: var(--accent-text);
   line-height: 1;
   margin-bottom: 6px;
 }
@@ -673,7 +685,9 @@ button {
   fill: var(--surface-2);
   stroke: var(--line);
   stroke-width: 1.5;
-  transition: fill 0.25s, stroke 0.25s;
+  transition:
+    fill 0.25s,
+    stroke 0.25s;
 }
 .loop-node text {
   fill: var(--text);
@@ -732,7 +746,7 @@ button {
   border-radius: 18px;
   background: color-mix(in srgb, var(--accent) 16%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 1.9rem;
 }
 
@@ -850,7 +864,7 @@ button {
   color: var(--muted);
 }
 .kind-tool {
-  border-left-color: var(--accent);
+  border-left-color: var(--accent-text);
 }
 .kind-tool .trace-text {
   font-family: var(--mono);
@@ -912,7 +926,9 @@ button {
   cursor: pointer;
   font-size: 0.82rem;
   color: var(--muted);
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .tool-card code {
   color: var(--text);
@@ -940,7 +956,7 @@ button {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .risk-danger .risk-tag {
   color: var(--bad);
@@ -998,7 +1014,9 @@ button {
   border: 1px solid var(--line);
   background: var(--surface-2);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .ctx-item.is-on {
   border-color: var(--teal);
@@ -1041,11 +1059,14 @@ button {
   overflow: hidden;
 }
 .ctx-block {
-  flex-basis: 0;
+  flex-shrink: 0;
   min-width: 3px;
   border-radius: 4px;
   background: linear-gradient(180deg, var(--teal), color-mix(in srgb, var(--teal) 60%, var(--bg)));
   animation: rise 0.2s ease both;
+}
+.ctx-block.is-over {
+  background: var(--bad);
 }
 
 .toggle {
@@ -1056,7 +1077,7 @@ button {
   font-size: 0.92rem;
 }
 .toggle input {
-  accent-color: var(--accent);
+  accent-color: var(--accent-text);
   width: 16px;
   height: 16px;
   margin-top: 3px;
@@ -1188,6 +1209,14 @@ button {
   font-size: 0.85rem;
   animation: rise 0.2s ease both;
 }
+.decisions li.is-ok {
+  border-left-color: var(--good);
+  background: var(--good-bg);
+}
+.decisions li.is-fail {
+  border-left-color: var(--bad);
+  background: var(--bad-bg);
+}
 .decisions li code {
   word-break: break-all;
 }
@@ -1257,10 +1286,11 @@ button {
 }
 
 .gantt {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 28px;
 }
 .gantt-row {
   display: grid;
@@ -1277,7 +1307,11 @@ button {
   position: relative;
   height: 32px;
   border-radius: 8px;
-  background: repeating-linear-gradient(90deg, var(--surface-2) 0 calc(100% / var(--span) - 1px), var(--line) calc(100% / var(--span) - 1px) calc(100% / var(--span)));
+  background: repeating-linear-gradient(
+    90deg,
+    var(--surface-2) 0 calc(100% / var(--span) - 1px),
+    var(--line) calc(100% / var(--span) - 1px) calc(100% / var(--span))
+  );
 }
 .gantt-bar {
   position: absolute;
@@ -1291,7 +1325,9 @@ button {
   font-size: 0.72rem;
   font-weight: 700;
   font-family: var(--mono);
-  transition: left 0.35s ease, width 0.35s ease;
+  transition:
+    left 0.35s ease,
+    width 0.35s ease;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 .gantt-bar.lane-main {
@@ -1318,19 +1354,23 @@ button {
 .gantt-text {
   padding: 0 6px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.gantt-axis {
-  position: relative;
-  height: 18px;
+.gantt-bar.is-merge {
+  background: repeating-linear-gradient(45deg, var(--bad) 0 6px, color-mix(in srgb, var(--bad) 60%, var(--bg)) 6px 12px);
+  color: #fff;
 }
 .gantt-target {
+  /* Lane label column is 110px plus a 10px gap; the track fills the rest. */
   position: absolute;
-  top: -44px;
-  bottom: 0;
+  top: -6px;
+  bottom: -18px;
+  left: calc(120px + (100% - 120px) * var(--target));
   border-left: 2px dashed var(--accent);
   padding-left: 4px;
   font-size: 0.7rem;
-  color: var(--accent);
+  color: var(--accent-text);
   display: flex;
   align-items: flex-end;
   pointer-events: none;
@@ -1387,7 +1427,7 @@ button {
   color: var(--good);
 }
 .grade-B {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .grade-C,
 .grade-D {
@@ -1424,7 +1464,7 @@ button {
 }
 .glossary-item dt {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-bottom: 4px;
 }
 .glossary-item dd {
@@ -1490,6 +1530,9 @@ button {
   }
   .gantt-row {
     grid-template-columns: 72px 1fr;
+  }
+  .gantt-target {
+    left: calc(82px + (100% - 82px) * var(--target));
   }
 }
 

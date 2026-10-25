@@ -11,16 +11,17 @@ export interface PlanStep {
 
 export const PLAN_TASK = 'Add an "Export to CSV" button to the Reports page.'
 
+// Deliberately not in dependency order: ordering the plan is part of the puzzle.
 export const CANDIDATES: PlanStep[] = [
-  { id: 'explore', text: 'Read the Reports page and find how its data is loaded', kind: 'core', deps: [] },
-  { id: 'conventions', text: 'Check AGENTS.md for testing conventions', kind: 'optional', deps: [] },
-  { id: 'util', text: 'Write a toCsv(rows) helper that escapes commas, quotes and newlines', kind: 'core', deps: ['explore'] },
+  { id: 'button', text: 'Add the Export button, wired to toCsv and a file download', kind: 'core', deps: ['util', 'explore'] },
+  { id: 'pdf', text: "Also add PDF and Excel export while we're here", kind: 'creep', deps: [] },
+  { id: 'pr', text: 'Summarize the change and open a PR', kind: 'core', deps: ['button', 'util_test', 'e2e'] },
   { id: 'util_test', text: 'Unit-test toCsv on tricky values', kind: 'verify', deps: ['util'] },
-  { id: 'button', text: 'Add the Export button, wired to toCsv and a file download', kind: 'core', deps: ['util'] },
-  { id: 'e2e', text: 'Run the app, click Export, open the file', kind: 'verify', deps: ['button'] },
+  { id: 'explore', text: 'Read the Reports page and find how its data is loaded', kind: 'core', deps: [] },
   { id: 'redesign', text: 'Migrate the Reports page to the new design system', kind: 'creep', deps: [] },
-  { id: 'pdf', text: 'Also add PDF and Excel export while we\'re here', kind: 'creep', deps: [] },
-  { id: 'pr', text: 'Summarize the change and open a PR', kind: 'core', deps: ['button'] },
+  { id: 'e2e', text: 'Run the app, click Export, open the file', kind: 'verify', deps: ['button'] },
+  { id: 'util', text: 'Write a toCsv(rows) helper that escapes commas, quotes and newlines', kind: 'core', deps: ['explore'] },
+  { id: 'conventions', text: 'Check AGENTS.md for testing conventions', kind: 'optional', deps: [] },
 ]
 
 const byId = new Map(CANDIDATES.map((s) => [s.id, s]))
@@ -45,7 +46,7 @@ export function gradePlan(plan: string[]): Grade {
   const verifies = plan.filter((id) => byId.get(id)?.kind === 'verify')
   if (verifies.length === 0) {
     score -= 30
-    notes.push(bad("The plan never checks its own work. Without a verify step, \"done\" just means \"stopped typing\"."))
+    notes.push(bad('The plan never checks its own work. Without a verify step, "done" just means "stopped typing".'))
   } else if (verifies.length === 2) {
     notes.push(good('Two independent checks: unit tests for the logic, a real click-through for the UI.'))
   } else {
@@ -64,10 +65,13 @@ export function gradePlan(plan: string[]): Grade {
     }
   }
 
-  if (position.has('conventions')) notes.push(good('Reading AGENTS.md first is cheap, and it stops you from fighting the codebase\'s conventions.'))
+  const firstEdit = Math.min(...['util', 'button'].map((id) => position.get(id) ?? Infinity))
+  if (position.has('conventions') && position.get('conventions')! < firstEdit)
+    notes.push(good("Reading AGENTS.md first is cheap, and it stops you from fighting the codebase's conventions."))
   if (plan[0] === 'explore' || plan[0] === 'conventions') notes.push(good('The plan starts by exploring before it edits anything.'))
   if (plan.length === 0) notes.push(info('Add steps from the pool to build a plan.'))
 
+  const missingCore = CANDIDATES.some((c) => c.kind === 'core' && !position.has(c.id))
   const final = clamp(score)
-  return { score: final, passed: final >= 75, notes }
+  return { score: final, passed: final >= 75 && !missingCore, notes }
 }

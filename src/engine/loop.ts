@@ -53,6 +53,7 @@ export const TRACE: TraceEvent[] = [
   },
   { kind: 'think', phase: 'act', text: 'checkout had a workaround for the old bug. With the real fix in place, the workaround over-charges. Remove it.' },
   { kind: 'tool', phase: 'act', text: 'edit_file("src/checkout.ts", charge = total(c))' },
+  { kind: 'observe', phase: 'act', text: 'Edited src/checkout.ts (1 line changed)' },
   { kind: 'tool', phase: 'verify', text: 'run_tests()' },
   { kind: 'observe', phase: 'verify', text: 'All green', code: 'PASS 31 tests across 6 files' },
   {
@@ -67,36 +68,72 @@ export const CHECKPOINTS: Checkpoint[] = [
     after: 3,
     question: 'The agent has the failing output. What should it do next?',
     options: [
-      { text: 'Edit cart.ts so the discount case returns 90', correct: false, why: 'That patches the symptom. The agent hasn\'t read the code yet, so it would be guessing, or hardcoding a value to fit the test.' },
-      { text: 'Read the code under test to understand the discount logic', correct: true, why: 'Gather context before acting. A cheap read now prevents an expensive wrong edit later.' },
-      { text: 'Report that the test is probably flaky', correct: false, why: 'A deterministic numeric mismatch is not flakiness. Declaring victory without evidence is the classic agent failure mode.' },
+      {
+        text: 'Edit cart.ts so the discount case returns 90',
+        correct: false,
+        why: "That patches the symptom. The agent hasn't read the code yet, so it would be guessing, or hardcoding a value to fit the test.",
+      },
+      {
+        text: 'Read the code under test to understand the discount logic',
+        correct: true,
+        why: 'Gather context before acting. A cheap read now prevents an expensive wrong edit later.',
+      },
+      {
+        text: 'Report that the test is probably flaky',
+        correct: false,
+        why: 'A deterministic numeric mismatch is not flakiness. Declaring victory without evidence is the classic agent failure mode.',
+      },
     ],
   },
   {
     after: 6,
     question: 'The code applies the discount twice. What kind of change should the agent make?',
     options: [
-      { text: 'Rewrite the cart module to be cleaner', correct: false, why: 'Scope creep. A large rewrite multiplies risk and review cost for a one-line bug.' },
+      {
+        text: 'Rewrite the cart module to be cleaner',
+        correct: false,
+        why: 'Scope creep. A large rewrite multiplies risk and review cost for a one-line bug.',
+      },
       { text: 'Make the minimal edit: drop the second applyDiscount', correct: true, why: 'Small, targeted diffs are easy to verify and easy to revert.' },
-      { text: 'Stop and ask the user which function should discount', correct: false, why: 'Asking is sometimes right, but here the failing test already specifies the intended behavior. Use the evidence you have.' },
+      {
+        text: 'Stop and ask the user which function should discount',
+        correct: false,
+        why: 'Asking is sometimes right, but here the failing test already specifies the intended behavior. Use the evidence you have.',
+      },
     ],
   },
   {
     after: 8,
     question: 'The edit is applied. Is the agent done?',
     options: [
-      { text: 'Yes. The fix is obviously correct.', correct: false, why: '"Obviously correct" is how regressions ship. Keep reading: this edit breaks something else.' },
+      {
+        text: 'Yes. The fix is obviously correct.',
+        correct: false,
+        why: '"Obviously correct" is how regressions ship. Keep reading: this edit breaks something else.',
+      },
       { text: 'No. Re-run the tests to verify.', correct: true, why: 'An agent is only done when it has evidence. Verification closes the loop.' },
-      { text: 'No. Add a long comment explaining the change first.', correct: false, why: 'Docs are nice, but they don\'t tell you whether the change works.' },
+      { text: 'No. Add a long comment explaining the change first.', correct: false, why: "Docs are nice, but they don't tell you whether the change works." },
     ],
   },
   {
     after: 10,
     question: 'Verification caught a new failure in checkout. Now what?',
     options: [
-      { text: 'Delete the failing checkout test so the suite is green', correct: false, why: 'This is "reward hacking": gaming the signal instead of doing the work. Watch for it in real agent diffs.' },
-      { text: 'Loop back: gather context on checkout, then fix it', correct: true, why: "This is what makes it a loop. A failed check doesn't end the run. It sends the agent back to gathering context." },
-      { text: 'Revert everything and tell the user it can\'t be done', correct: false, why: 'Giving up discards real progress. The failure is new information to use.' },
+      {
+        text: 'Delete the failing checkout test so the suite is green',
+        correct: false,
+        why: 'This is "reward hacking": gaming the signal instead of doing the work. Watch for it in real agent diffs.',
+      },
+      {
+        text: 'Loop back: gather context on checkout, then fix it',
+        correct: true,
+        why: "This is what makes it a loop. A failed check doesn't end the run. It sends the agent back to gathering context.",
+      },
+      {
+        text: "Revert everything and tell the user it can't be done",
+        correct: false,
+        why: 'Giving up discards real progress. The failure is new information to use.',
+      },
     ],
   },
 ]

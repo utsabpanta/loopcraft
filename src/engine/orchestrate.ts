@@ -10,14 +10,17 @@ export const LANE_LABEL: Record<Lane, string> = {
   sub3: 'Subagent γ',
 }
 
-/** Briefing a fresh subagent costs time: it starts with an empty context. */
+/** Each task handed to a subagent needs a briefing: it starts with an empty context. */
 export const SPIN_UP = 1
+/** Untangling a merge conflict after the fact costs this much extra time. */
+export const MERGE_COST = 3
 export const TARGET = 14
 export const OPTIMUM = 12
 
 export interface WorkUnit {
   id: string
   label: string
+  short: string
   duration: number
   files: string[]
   deps: string[]
@@ -27,14 +30,28 @@ export const ORCH_TASK = 'Migrate four services to the new structured-logging li
 
 // Listed in a valid dependency order; the simulator relies on that.
 export const UNITS: WorkUnit[] = [
-  { id: 'scout', label: 'Survey which services use the old logger', duration: 2, files: [], deps: [] },
-  { id: 'config', label: 'Update the shared logger config package', duration: 2, files: ['packages/logger'], deps: ['scout'] },
-  { id: 'billing', label: 'Migrate billing service', duration: 3, files: ['services/billing', 'services/gateway/routes.ts'], deps: ['config'] },
-  { id: 'auth', label: 'Migrate auth service', duration: 3, files: ['services/auth', 'services/gateway/routes.ts'], deps: ['config'] },
-  { id: 'search', label: 'Migrate search service', duration: 3, files: ['services/search'], deps: ['config'] },
-  { id: 'notify', label: 'Migrate notify service', duration: 3, files: ['services/notify'], deps: ['config'] },
-  { id: 'docs', label: 'Rewrite docs/logging.md', duration: 2, files: ['docs/logging.md'], deps: ['config'] },
-  { id: 'integ', label: 'Run the integration suite and fix fallout', duration: 2, files: [], deps: ['billing', 'auth', 'search', 'notify', 'docs'] },
+  { id: 'scout', short: 'Survey', label: 'Survey which services use the old logger', duration: 2, files: [], deps: [] },
+  { id: 'config', short: 'Shared config', label: 'Update the shared logger config package', duration: 2, files: ['packages/logger'], deps: ['scout'] },
+  {
+    id: 'billing',
+    short: 'Billing',
+    label: 'Migrate billing service',
+    duration: 3,
+    files: ['services/billing', 'services/gateway/routes.ts'],
+    deps: ['config'],
+  },
+  { id: 'auth', short: 'Auth', label: 'Migrate auth service', duration: 3, files: ['services/auth', 'services/gateway/routes.ts'], deps: ['config'] },
+  { id: 'search', short: 'Search', label: 'Migrate search service', duration: 3, files: ['services/search'], deps: ['config'] },
+  { id: 'notify', short: 'Notify', label: 'Migrate notify service', duration: 3, files: ['services/notify'], deps: ['config'] },
+  { id: 'docs', short: 'Docs', label: 'Rewrite docs/logging.md', duration: 2, files: ['docs/logging.md'], deps: ['config'] },
+  {
+    id: 'integ',
+    short: 'Integration',
+    label: 'Run the integration suite and fix fallout',
+    duration: 2,
+    files: [],
+    deps: ['billing', 'auth', 'search', 'notify', 'docs'],
+  },
 ]
 
 export interface Scheduled {
@@ -53,6 +70,7 @@ export interface Conflict {
 
 export interface Schedule {
   items: Scheduled[]
+  /** Wall-clock time including merge-conflict cleanup. */
   makespan: number
   conflicts: Conflict[]
   subagentsUsed: number
@@ -67,7 +85,7 @@ export function simulate(assignment: Record<string, Lane>): Schedule {
   for (const unit of UNITS) {
     const lane = assignment[unit.id] ?? 'main'
     const ready = Math.max(0, ...unit.deps.map((d) => end.get(d) ?? 0))
-    const spinUp = lane !== 'main' && !laneUsed.has(lane)
+    const spinUp = lane !== 'main'
     laneUsed.add(lane)
     const start = Math.max(laneFree[lane], ready)
     const finish = start + unit.duration + (spinUp ? SPIN_UP : 0)
@@ -90,7 +108,7 @@ export function simulate(assignment: Record<string, Lane>): Schedule {
 
   return {
     items,
-    makespan: Math.max(...items.map((s) => s.end)),
+    makespan: Math.max(...items.map((s) => s.end)) + conflicts.length * MERGE_COST,
     conflicts,
     subagentsUsed: [...laneUsed].filter((l) => l !== 'main').length,
   }
@@ -101,15 +119,21 @@ export function gradeSchedule(s: Schedule): Grade {
   const label = (id: string) => UNITS.find((u) => u.id === id)!.label.toLowerCase()
 
   for (const c of s.conflicts) {
-    notes.push(bad(`Merge conflict: "${label(c.a)}" and "${label(c.b)}" both edited ${c.file} at the same time. Two writers on one file need to run one after the other.`))
+    notes.push(
+      bad(
+        `Merge conflict: "${label(c.a)}" and "${label(c.b)}" both edited ${c.file} at the same time, which cost +${MERGE_COST}t to untangle. Two writers on one file need to run one after the other.`,
+      ),
+    )
   }
-  if (s.makespan <= OPTIMUM && !s.conflicts.length) notes.push(good(`Finished in ${s.makespan} time units. That's the best possible schedule.`))
-  else if (s.makespan <= TARGET) notes.push(good(`Finished in ${s.makespan} time units (target: ${TARGET}).`))
+  if (s.conflicts.length) notes.push(info('A schedule with merge conflicts never passes, however fast it looks.'))
+  else if (s.makespan <= OPTIMUM) notes.push(good(`Finished in ${s.makespan} time units. That's the best possible schedule.`))
+  else if (s.makespan <= TARGET) notes.push(good(`Finished in ${s.makespan} time units (target: ${TARGET}). Can you find the ${OPTIMUM}t schedule?`))
   else notes.push(bad(`Took ${s.makespan} time units (target: ${TARGET}). Independent work is still running one piece at a time.`))
 
   if (s.subagentsUsed === 0) notes.push(info('No subagents: everything runs serially and every file the main agent reads piles up in its context.'))
   const mainLoad = s.items.filter((i) => i.lane === 'main').reduce((n, i) => n + i.unit.duration, 0)
-  if (s.subagentsUsed > 0 && mainLoad <= 10) notes.push(good('Subagents did the heavy lifting in their own context windows and sent back short summaries. The main agent stays focused.'))
+  if (s.subagentsUsed > 0 && mainLoad <= 10)
+    notes.push(good('Subagents did the heavy lifting in their own context windows and sent back short summaries. The main agent stays focused.'))
 
   const score = clamp(100 - Math.max(0, s.makespan - OPTIMUM) * 6 - s.conflicts.length * 30)
   return { score, passed: s.makespan <= TARGET && s.conflicts.length === 0, notes }

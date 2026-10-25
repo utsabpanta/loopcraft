@@ -3,19 +3,21 @@ import { Meter, Panel } from '../components/ui'
 import { BUDGET, ITEMS, TASK, evaluateContext } from '../engine/context'
 import type { LevelProps } from './types'
 
-export function ContextLevel({ onGrade }: LevelProps) {
+export function ContextLevel({ onGrade, onReset }: LevelProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [jit, setJit] = useState(false)
 
   const used = ITEMS.filter((i) => i.relevance === 'required' || selected.has(i.id)).reduce((n, i) => n + i.tokens, 0)
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    onReset()
     setSelected((s) => {
       const next = new Set(s)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
+  }
 
   return (
     <div className="stack">
@@ -46,13 +48,25 @@ export function ContextLevel({ onGrade }: LevelProps) {
         <div className="sticky stack">
           <Panel title="Window">
             <Meter value={used} max={BUDGET} label="Tokens" danger={used > BUDGET} />
-            <div className="ctx-blocks" aria-hidden>
+            <div className="ctx-blocks" aria-hidden title="Each block is one item, drawn to scale against the 10,000-token budget">
               {ITEMS.filter((i) => i.relevance === 'required' || selected.has(i.id)).map((i) => (
-                <span key={i.id} title={i.label} className="ctx-block" style={{ flexGrow: Math.min(i.tokens, BUDGET) }} />
+                <span
+                  key={i.id}
+                  title={`${i.label}: ${i.tokens.toLocaleString()} tokens`}
+                  className={`ctx-block ${used > BUDGET ? 'is-over' : ''}`}
+                  style={{ width: `${(i.tokens / Math.max(used, BUDGET)) * 100}%` }}
+                />
               ))}
             </div>
             <label className="toggle">
-              <input type="checkbox" checked={jit} onChange={(e) => setJit(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={jit}
+                onChange={(e) => {
+                  onReset()
+                  setJit(e.target.checked)
+                }}
+              />
               <span>
                 <strong>Give the agent a search tool</strong>
                 <span className="muted small"> so it can fetch files just-in-time</span>

@@ -17,7 +17,7 @@ export const LEVELS: Level[] = [
     glyph: '↻',
     briefing: [
       'A chatbot answers once. An agent keeps going: it gathers context, takes an action, checks the result, and decides what to do next. It repeats until the goal is met or it hits a reason to stop.',
-      'Agentic engineering is the craft of designing that loop so it ends with correct work. You decide what the agent can see, what it can do, how it knows it\'s done, and where a human steps in.',
+      "Agentic engineering is the craft of designing that loop so it ends with correct work. You decide what the agent can see, what it can do, how it knows it's done, and where a human steps in.",
       'Step through a real-looking trace below. At each ⏸ checkpoint, predict what a good agent does next.',
     ],
     fieldNotes: [
@@ -36,7 +36,7 @@ export const LEVELS: Level[] = [
     glyph: '⚒',
     briefing: [
       'Tools are how an agent touches the world: reading files, running tests, calling APIs, deploying. The model picks tools from their names, schemas and descriptions alone, so those are part of your prompt.',
-      'Too few tools and the agent is stuck. Too many and it gets confused, burns tokens on schemas, and reaches for power it shouldn\'t have. Pack the smallest toolbox that finishes the mission.',
+      "Too few tools and the agent is stuck. Too many and it gets confused, burns tokens on schemas, and reaches for power it shouldn't have. Pack the smallest toolbox that finishes the mission.",
     ],
     fieldNotes: [
       'Least privilege: the agent may use any tool it holds, so only hand it the ones you want used.',
@@ -49,17 +49,17 @@ export const LEVELS: Level[] = [
   {
     id: 'context',
     title: 'Context Engineering',
-    tagline: "The context window is working memory, not a junk drawer.",
+    tagline: 'The context window is working memory, not a junk drawer.',
     badge: 'Context Curator',
     glyph: '◫',
     briefing: [
       'Everything the model knows about your task is whatever is in its context window right now: the system prompt, files, tool results, history. That space is limited, and quality drops as it fills with noise.',
-      "Context engineering means choosing the smallest set of high-signal tokens. Load the essentials, leave out stale or misleading material, compact long history, and let the agent fetch the rest just-in-time.",
+      'Context engineering means choosing the smallest set of high-signal tokens. Load the essentials, leave out stale or misleading material, compact long history, and let the agent fetch the rest just-in-time.',
     ],
     fieldNotes: [
       'More context is not better context. Noise dilutes attention.',
       'Stale docs are worse than none: they send the agent confidently down the wrong path.',
-      'Keep a short AGENTS.md / CLAUDE.md with conventions and commands. It\'s cheap and high-signal.',
+      "Keep a short AGENTS.md / CLAUDE.md with conventions and commands. It's cheap and high-signal.",
       'Compact long histories into summaries; use search tools for just-in-time retrieval.',
     ],
     Component: ContextLevel,
@@ -85,11 +85,11 @@ export const LEVELS: Level[] = [
   {
     id: 'verify',
     title: 'Trust, but Verify',
-    tagline: 'The agent says it\'s done. Prove it.',
+    tagline: "The agent says it's done. Prove it.",
     badge: 'Inspector',
     glyph: '⌕',
     briefing: [
-      "Models are optimistic narrators. \"All fixed! ✅\" is a sentence the model generated, not evidence. Agentic engineering means building feedback loops, like tests, type checks, diff review and real-world checks, that tell you (and the agent) the truth.",
+      'Models are optimistic narrators. "All fixed! ✅" is a sentence the model generated, not evidence. Agentic engineering means building feedback loops, like tests, type checks, diff review and real-world checks, that tell you (and the agent) the truth.',
       'Below, the agent claims success. Three problems are hidden in its change and you only have time for three checks. Pick the ones that give independent evidence.',
     ],
     fieldNotes: [
@@ -108,7 +108,7 @@ export const LEVELS: Level[] = [
     glyph: '⛨',
     briefing: [
       'Autonomy is a dial, not a switch. Good permission design lets routine, reversible actions flow and stops destructive, outward-facing, or suspicious ones for a human decision.',
-      'You\'re the human in the loop. Review ten actions an agent wants to take. Some are routine. Some came from instructions hidden in files the agent read.',
+      "You're the human in the loop. Review ten actions an agent wants to take. Some are routine. Some came from instructions hidden in files the agent read.",
     ],
     fieldNotes: [
       'Text in files, web pages and tool output is data, never instructions. Watch for prompt injection.',
@@ -125,14 +125,14 @@ export const LEVELS: Level[] = [
     badge: 'Conductor',
     glyph: '⋔',
     briefing: [
-      'Subagents let you run independent work in parallel, each in a fresh context window, reporting back a short summary. That keeps the main agent\'s context clean and the wall-clock short.',
+      "Subagents let you run independent work in parallel, each in a fresh context window, reporting back a short summary. That keeps the main agent's context clean and the wall-clock short.",
       'But parallelism has a price: each subagent needs a briefing, dependent work still has to wait, and two writers on the same file means a merge conflict. Schedule the migration below to finish fast without collisions.',
     ],
     fieldNotes: [
       'Parallelize independent work; serialize work with dependencies.',
       'Never put two writers on the same files at the same time.',
-      'Subagents are great for research and fan-out: their messy exploration stays out of the main context.',
-      'Spawning has overhead. Don\'t send a swarm where one agent would do.',
+      'Subagents shine at fan-out: independent tasks run in parallel, and their messy exploration stays out of the main context.',
+      "Spawning has overhead. Don't send a swarm where one agent would do.",
     ],
     Component: OrchestrateLevel,
   },

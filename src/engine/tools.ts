@@ -11,13 +11,13 @@ export interface Tool {
   schemaTokens: number
 }
 
-export const MISSION =
-  'Checkout returns HTTP 500 in staging. Find the root cause, fix it, and ship the fix to staging.'
+export const MISSION = 'Checkout returns HTTP 500 in staging. Find the root cause, fix it, and ship the fix to staging.'
 
 export const TOOLBOX: Tool[] = [
   { id: 'read_file', name: 'read_file', description: 'Read a file from the repo', risk: 'safe', schemaTokens: 90 },
   { id: 'grep', name: 'grep', description: 'Search the repo with a regex', risk: 'safe', schemaTokens: 110 },
-  { id: 'query_logs', name: 'query_logs', description: 'Search staging application logs', risk: 'safe', schemaTokens: 140 },
+  // query_logs' description is chosen in panel 2; its tokens are added from DESCRIPTION_OPTIONS.
+  { id: 'query_logs', name: 'query_logs', description: 'Search staging application logs', risk: 'safe', schemaTokens: 60 },
   { id: 'http_request', name: 'http_request', description: 'Call a staging HTTP endpoint', risk: 'safe', schemaTokens: 160 },
   { id: 'edit_file', name: 'edit_file', description: 'Apply an exact string replacement to a file', risk: 'write', schemaTokens: 130 },
   { id: 'run_tests', name: 'run_tests', description: 'Run the test suite (optionally filtered)', risk: 'safe', schemaTokens: 100 },
@@ -35,6 +35,7 @@ export interface DescriptionOption {
   text: string
   quality: 'vague' | 'precise' | 'bloated'
   why: string
+  tokens: number
 }
 
 export const DESCRIPTION_OPTIONS: DescriptionOption[] = [
@@ -42,18 +43,27 @@ export const DESCRIPTION_OPTIONS: DescriptionOption[] = [
     text: 'Gets logs.',
     quality: 'vague',
     why: "Too vague. The model can't tell which logs, how to filter them, or what comes back, so it will guess arguments and flood its context.",
+    tokens: 5,
   },
   {
-    text: "Search application logs. Args: service (e.g. \"checkout\"), since (\"15m\", \"2h\" or ISO time), level (\"error\" | \"warn\" | \"info\"). Returns at most 50 matching lines, newest first. Use to find stack traces for failing requests.",
+    text: 'Search application logs. Args: service (e.g. "checkout"), since ("15m", "2h" or ISO time), level ("error" | "warn" | "info"). Returns at most 50 matching lines, newest first. Use to find stack traces for failing requests.',
     quality: 'precise',
     why: 'Precise. It says what the tool does, what each argument means with examples, what it returns, its limits, and when to use it. Write tool docs the way you would for a new teammate.',
+    tokens: 80,
   },
   {
     text: 'This tool wraps our internal LogHub v3 gRPC client (see go/loghub-arch), which shards across 12 Elasticsearch clusters with a tiered retention policy (hot: 3d, warm: 30d, cold: 1y). Queries use the Lucene syntax subset described in RFC-0042, except for the deprecated fields listed in Appendix C, and…',
     quality: 'bloated',
     why: "Bloated. It's all implementation trivia and nothing about how to call it. This text is billed on every model call and still leaves out the arguments.",
+    tokens: 420,
   },
 ]
+
+export function toolboxTokens(selected: Set<string>, descriptionIdx: number | null): number {
+  const base = TOOLBOX.filter((t) => selected.has(t.id)).reduce((n, t) => n + t.schemaTokens, 0)
+  const desc = selected.has('query_logs') && descriptionIdx !== null ? DESCRIPTION_OPTIONS[descriptionIdx].tokens : 0
+  return base + desc
+}
 
 export interface ToolRunStep {
   stage: string
@@ -97,7 +107,11 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
       score -= 10
       notes.push(bad('A weak query_logs description made the agent call it with no filters and flood its context.'))
     } else {
-      steps.push({ stage: 'Investigate', ok: true, text: 'query_logs(service="checkout", since="15m", level="error") → TypeError: cannot read "currency" of undefined at pricing.ts:42' })
+      steps.push({
+        stage: 'Investigate',
+        ok: true,
+        text: 'query_logs(service="checkout", since="15m", level="error") → TypeError: cannot read "currency" of undefined at pricing.ts:42',
+      })
       notes.push(good('A precise query_logs description led to a focused, cheap call.'))
     }
   } else if (has('shell')) {
@@ -118,7 +132,11 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
   } else if (!canSee) {
     steps.push({ stage: 'Locate', ok: false, text: 'Read through the code, but without the error message it had no idea where to look.' })
   } else if (has('grep') || has('read_file')) {
-    steps.push({ stage: 'Locate', ok: true, text: has('grep') ? 'grep "currency" → pricing.ts:42 reads cart.region.currency' : 'read_file("src/pricing.ts") → line 42 reads cart.region.currency' })
+    steps.push({
+      stage: 'Locate',
+      ok: true,
+      text: has('grep') ? 'grep "currency" → pricing.ts:42 reads cart.region.currency' : 'read_file("src/pricing.ts") → line 42 reads cart.region.currency',
+    })
   } else {
     steps.push({ stage: 'Locate', ok: true, text: 'cat src/pricing.ts over shell → line 42 reads cart.region.currency' })
   }
@@ -127,7 +145,11 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
   // Fix
   const canEdit = has('edit_file') || has('shell')
   if (!canEdit) {
-    steps.push({ stage: 'Fix', ok: false, text: diagnosed ? 'Found the bug, but has no way to change the code.' : 'No way to change the code (and no diagnosis to act on yet).' })
+    steps.push({
+      stage: 'Fix',
+      ok: false,
+      text: diagnosed ? 'Found the bug, but has no way to change the code.' : 'No way to change the code (and no diagnosis to act on yet).',
+    })
     score -= 25
     missing.push('a way to change code')
   } else if (!diagnosed) {
@@ -169,7 +191,7 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
     missing.push('a way to ship the fix to staging')
   }
   if (!has('deploy_staging') && !has('deploy_production') && !has('shell')) score -= 15
-  const completed = fixed && (has('deploy_staging') || has('shell'))
+  const completed = fixed && has('run_tests') && (has('deploy_staging') || has('shell'))
 
   // Hints name the missing capability, not the tool, so the puzzle stays a puzzle.
   notes.unshift(...missing.map((m) => bad(`Missing: ${m}.`)))
@@ -178,11 +200,15 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
   const count = selected.size
   const dangerous = TOOLBOX.filter((t) => t.risk === 'danger' && has(t.id))
   const irrelevant = ['web_search', 'send_slack', 'create_ticket', 'generate_image'].filter(has)
-  const schemaTokens = TOOLBOX.filter((t) => has(t.id)).reduce((n, t) => n + t.schemaTokens, 0)
+  const schemaTokens = toolboxTokens(selected, descriptionIdx)
 
   if (dangerous.length) {
     score -= dangerous.length * 10
-    notes.push(bad(`Dangerous tools in reach: ${dangerous.map((t) => t.name).join(', ')}. Least privilege: an agent can only misuse what you give it.`))
+    notes.unshift(
+      bad(
+        `High-risk tools in reach: ${dangerous.map((t) => t.name).join(', ')}. This level fails while you hold any of them. Least privilege: an agent can misuse anything you give it, and a prompt injection can make it try.`,
+      ),
+    )
   }
   if (irrelevant.length) {
     score -= irrelevant.length * 4
@@ -205,6 +231,6 @@ export function runToolMission(selected: Set<string>, descriptionIdx: number | n
     completed,
     shippedToProd,
     schemaTokens,
-    grade: { score: final, passed: completed && !shippedToProd && final >= 70, notes },
+    grade: { score: final, passed: completed && !shippedToProd && !dangerous.length && final >= 70, notes },
   }
 }

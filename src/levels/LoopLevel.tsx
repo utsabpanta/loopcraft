@@ -6,10 +6,12 @@ import type { LevelProps } from './types'
 
 const KIND_LABEL = { user: 'user', think: 'thinks', tool: 'calls', observe: 'sees', done: 'reports' } as const
 
-export function LoopLevel({ onGrade }: LevelProps) {
+export function LoopLevel({ onGrade, onReset }: LevelProps) {
   const [cursor, setCursor] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const logRef = useRef<HTMLOListElement>(null)
+  const stepRef = useRef<HTMLButtonElement>(null)
+  const answered = useRef(false)
 
   const pendingIdx = CHECKPOINTS.findIndex((cp, i) => cp.after === cursor && answers[i] === undefined)
   const pending = pendingIdx >= 0 ? CHECKPOINTS[pendingIdx] : null
@@ -21,20 +23,37 @@ export function LoopLevel({ onGrade }: LevelProps) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [cursor, answers])
 
-  const answer = (opt: number) => setAnswers((a) => Object.assign([...a], { [pendingIdx]: opt }))
+  // The clicked choice unmounts after answering, so hand keyboard focus to the Step button.
+  useEffect(() => {
+    if (answered.current) stepRef.current?.focus()
+    answered.current = false
+  }, [answers])
+
+  const answer = (opt: number) => {
+    answered.current = true
+    setAnswers((a) => Object.assign([...a], { [pendingIdx]: opt }))
+  }
   const step = () => {
     const next = cursor + 1
     setCursor(next)
     if (next >= TRACE.length - 1) onGrade(gradeLoop(answers))
   }
   const reset = () => {
+    onReset()
     setCursor(0)
     setAnswers([])
   }
 
   return (
     <div className="split">
-      <Panel title="Agent trace" actions={<button className="btn ghost" onClick={reset}>Restart</button>}>
+      <Panel
+        title="Agent trace"
+        actions={
+          <button className="btn ghost" onClick={reset}>
+            Restart
+          </button>
+        }
+      >
         <ol className="trace" ref={logRef}>
           {TRACE.slice(0, cursor + 1).map((e, i) => {
             const cpIdx = CHECKPOINTS.findIndex((cp) => cp.after === i)
@@ -46,7 +65,7 @@ export function LoopLevel({ onGrade }: LevelProps) {
                 <span className="trace-text">{e.text}</span>
                 {e.code && <pre className="code">{e.code}</pre>}
                 {cp && picked !== undefined && (
-                  <div className={`checkpoint-result ${cp.options[picked].correct ? 'is-good' : 'is-bad'}`}>
+                  <div aria-live="polite" className={`checkpoint-result ${cp.options[picked].correct ? 'is-good' : 'is-bad'}`}>
                     <strong>{cp.options[picked].correct ? 'Nice call.' : 'Not quite.'}</strong> {cp.options[picked].why}
                   </div>
                 )}
@@ -68,7 +87,7 @@ export function LoopLevel({ onGrade }: LevelProps) {
           </div>
         ) : (
           !finished && (
-            <button className="btn primary" onClick={step}>
+            <button ref={stepRef} className="btn primary" onClick={step}>
               Step ▸
             </button>
           )
